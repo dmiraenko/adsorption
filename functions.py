@@ -81,9 +81,9 @@ class Unilan(AdsorptionFunction):
 
         self.surface_conc_func = lambda p : 0.5 * self.sat_surface_conc * log((1 + self.b * p * self.exps) / (1 + self.b * p * self.expmins)) / self.s
         self.henry_law_const = self.sat_surface_conc * self.b * sinh(self.s) / self.s
-        self.red_spr_pressure_func = lambda p0 : (0.5 * self.sat_surface_conc / self.s) * quad(lambda x: log((1 + x * self.exps) / (1 + x * self.expmins)) / x, 0, self.b * p0)[0]
+        self.red_spr_pressure_func = lambda p0 : (0.5 * self.sat_surface_conc / self.s) * quad(lambda x: log(1 + self.b * p0 * exp(x)), -self.s, self.s)[0]
         self.pure_comp_pressure_func = lambda z : newton(\
-            lambda pdiml: quad(lambda x: log((1 + x * self.exps) / (1 + x * self.expmins)) / x, 0, pdiml)[0] - 2 * z * self.s / self.sat_surface_conc, \
+            lambda pdiml: quad(lambda x: log(1 + pdiml * exp(x)) / x, -self.s, self.s)[0] - 2 * z * self.s / self.sat_surface_conc, \
             (self.s / sinh(self.s)) * (exp(z / self.sat_surface_conc) - 1),
             fprime = lambda pdiml: log((1 + pdiml * self.exps) / (1 + pdiml * self.expmins)) / pdiml 
         ) / self.b
@@ -145,7 +145,7 @@ class Toth(AdsorptionFunction):
         fdiml = lambda x: (1 + x**self.t) ** (-1/self.t)
         self.surface_conc_func = lambda p : self.sat_surface_conc * (self.b * p) / (1 + (self.b * p)**self.t)**(1/self.t)
         self.henry_law_const = self.sat_surface_conc * self.b
-        self.red_spr_pressure_func = lambda p0 : self.sat_surface_conc * quad(fdiml, 0, self.b * p0)[0]
+        self.red_spr_pressure_func = lambda p0 : self.sat_surface_conc * quad(fdiml, 0, (self.b * p0).to(""))[0]
         self.pure_comp_pressure_func = lambda z : newton(\
             lambda pdiml : quad(fdiml, 0, pdiml)[0] - z / self.sat_surface_conc, \
             exp(z / self.sat_surface_conc) - 1,

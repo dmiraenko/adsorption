@@ -13,7 +13,30 @@ using namespace std;
 using namespace boost::units;
 
 template<class Conc>
-struct Langmuir {
+class AdsorptionFunction {
+public:
+    
+
+    virtual Conc surface_concentration(const pressure& p){
+        return 0;
+    };
+
+    virtual Conc henry_law_concentration(const pressure& p){
+        return 0;
+    };
+
+    virtual Conc reduced_spreding_pressure(const pressure& p){
+        return 0;
+    };
+
+    virtual pressure pure_component_pressure(const Conc& z){
+        return 0;
+    };
+};
+
+template<class Conc>
+class Langmuir : public AdsorptionFunction<Conc> {
+public:
     Conc cs;
     inv_pressure b;
 
@@ -22,26 +45,26 @@ struct Langmuir {
         b = _b;
     }
 
-    Conc surface_concetration(pressure& p){
+    Conc surface_concentration(const pressure& p){
         return cs * (b*p) / (1 + b*p);
     }
 
-    Conc henry_law_concentration(pressure& p){
+    Conc henry_law_concentration(const pressure& p){
         return cs * b * p;
     }
 
-    Conc reduced_spreading_pressure(pressure& p){
+    Conc reduced_spreading_pressure(const pressure& p){
         return cs * log(1 + b * p);
     }
 
-    pressure pure_component_pressure(Conc& z){
+    pressure pure_component_pressure(const Conc& z){
         return (exp(z / cs) - 1) / b;
     }
 };
 
 template<class Conc>
-class Toth {
-    public:
+class Toth : public AdsorptionFunction<Conc> {
+public:
 
     Conc cs;
     inv_pressure b;
@@ -53,7 +76,7 @@ class Toth {
         t = _t;
     }
 
-    Conc surface_concetration(const pressure& p){
+    Conc surface_concentration(const pressure& p){
         return cs * (b*p) * pow(1 + pow(b*p, t), -1/t);
     }
 
@@ -67,36 +90,11 @@ class Toth {
     }
 
     pressure pure_component_pressure(const Conc& z){
-        const gsl_root_fdfsolver_type *T = gsl_root_fdfsolver_steffenson;
-        gsl_root_fdfsolver *s = gsl_root_fdfsolver_alloc(T);
-        gsl_function_fdf FDF;
-
-        pcp_params params = {(double) t, (double) (z/cs)};
-
-        FDF.f = &f;
-        FDF.df = &rsp_deriv_diml;
-        FDF.fdf = &fdf;
-        FDF.params = &params;
-
-        double x0, x = exp(z/cs) - 1;
-        gsl_root_fdfsolver_set(s, &FDF, x);
-
-        int status, iter = 0, max_iter = 100;
-        do{
-            iter++;
-            status = gsl_root_fdfsolver_iterate(s);
-            x0 = x;
-            x = gsl_root_fdfsolver_root(s);
-
-            status = gsl_root_test_delta(x, x0, 0, 1e-7);            
-        }while(status == GSL_CONTINUE && iter < max_iter);
-
-        gsl_root_fdfsolver_free(s);
-
-        return x / b;
+        pcp_params params = {(double) t, (double) (z/cs)}
+        return pure_component_pressure_diml(&params) / b;
     }
 
-    private:
+private:
     
     struct pcp_params {
         double t;
@@ -132,11 +130,39 @@ class Toth {
         *y = f(x, params);
         *dy = rsp_deriv_diml(x, &(p->t));
     }
+
+    static double pure_component_pressure_diml(const void* params){
+        const gsl_root_fdfsolver_type *T = gsl_root_fdfsolver_steffenson;
+        gsl_root_fdfsolver *s = gsl_root_fdfsolver_alloc(T);
+        gsl_function_fdf FDF;
+
+        FDF.f = &f;
+        FDF.df = &rsp_deriv_diml;
+        FDF.fdf = &fdf;
+        FDF.params = params;
+
+        double x0, x = exp(zcs) - 1;
+        gsl_root_fdfsolver_set(s, &FDF, x);
+
+        int status, iter = 0, max_iter = 100;
+        do{
+            iter++;
+            status = gsl_root_fdfsolver_iterate(s);
+            x0 = x;
+            x = gsl_root_fdfsolver_root(s);
+
+            status = gsl_root_test_delta(x, x0, 0, 1e-7);            
+        }while(status == GSL_CONTINUE && iter < max_iter);
+
+        gsl_root_fdfsolver_free(s);
+
+        return x;
+    }
 };
 
 template<class Conc>
-class Sips {
-    public:
+class Sips : public AdsorptionFunction<Conc> {
+public:
 
     Conc cs;
     inv_pressure b;
@@ -148,7 +174,7 @@ class Sips {
         n = _n;
     }
 
-    Conc surface_concetration(const pressure& p){
+    Conc surface_concentration(const pressure& p){
         double temp = pow(b * p, 1/n);
         return cs * temp / (1 + temp);
     }
@@ -167,8 +193,8 @@ class Sips {
 };
 
 template<class Conc>
-class Unilan {
-    public:
+class Unilan : public AdsorptionFunction<Conc>{
+public:
 
     Conc cs;
     inv_pressure b;
@@ -182,7 +208,7 @@ class Unilan {
         expmins = exp(-s);
     }
 
-    Conc surface_concetration(const pressure& p){
+    Conc surface_concentration(const pressure& p){
         return 0.5 * cs * log((1 + b*p*exps) / (1 + b*p*expmins)) / s;
     }
 
@@ -196,36 +222,11 @@ class Unilan {
     }
 
     pressure pure_component_pressure(const Conc& z){
-        const gsl_root_fdfsolver_type *T = gsl_root_fdfsolver_steffenson;
-        gsl_root_fdfsolver *solv = gsl_root_fdfsolver_alloc(T);
-        gsl_function_fdf FDF;
-
         pcp_params params = {(double) s, (double) exps, (double) expmins, (double) (z/cs)};
-
-        FDF.f = &f;
-        FDF.df = &rsp_deriv_diml;
-        FDF.fdf = &fdf;
-        FDF.params = &params;
-
-        double x0, x = exp(z/cs) - 1;
-        gsl_root_fdfsolver_set(solv, &FDF, x);
-
-        int status, iter = 0, max_iter = 100;
-        do{
-            iter++;
-            status = gsl_root_fdfsolver_iterate(solv);
-            x0 = x;
-            x = gsl_root_fdfsolver_root(solv);
-
-            status = gsl_root_test_delta(x, x0, 0, 1e-7);            
-        }while(status == GSL_CONTINUE && iter < max_iter);
-
-        gsl_root_fdfsolver_free(solv);
-
-        return (pressure)(x / b);
+        return pure_component_pressure_diml(&params) / b;
     }
 
-    private:
+private:
 
     dimless exps, expmins;
 
@@ -240,11 +241,6 @@ class Unilan {
         return log(1 + exp(s) * (*(double*)x));
     }
     
-    static double rsp_deriv_diml(double x, void* t){
-        double ts = (double)(*(dimless *) t);
-        return pow(1 + pow(x, ts), -1/ts);
-    }
-
     static double reduced_spreading_pressure_diml(double x, void* params){
         gsl_integration_workspace *w = gsl_integration_workspace_alloc(1000);
         double result, error;
@@ -274,5 +270,33 @@ class Unilan {
     static void fdf (double x, void* params, double* y, double* dy){
         *y = f(x, params);
         *dy = df(x, params);
+    }
+
+    static double pure_component_pressure(const void* params){
+        const gsl_root_fdfsolver_type *T = gsl_root_fdfsolver_steffenson;
+        gsl_root_fdfsolver *solv = gsl_root_fdfsolver_alloc(T);
+        gsl_function_fdf FDF;
+
+        FDF.f = &f;
+        FDF.df = &df;
+        FDF.fdf = &fdf;
+        FDF.params = params;
+
+        double x0, x = exp(z/cs) - 1;
+        gsl_root_fdfsolver_set(solv, &FDF, x);
+
+        int status, iter = 0, max_iter = 100;
+        do{
+            iter++;
+            status = gsl_root_fdfsolver_iterate(solv);
+            x0 = x;
+            x = gsl_root_fdfsolver_root(solv);
+
+            status = gsl_root_test_delta(x, x0, 0, 1e-7);            
+        }while(status == GSL_CONTINUE && iter < max_iter);
+
+        gsl_root_fdfsolver_free(solv);
+
+        return x;
     }
 };

@@ -1,16 +1,13 @@
 #include <boost/units/cmath.hpp>
 #include <boost/units/io.hpp>
 #include <boost/units/pow.hpp>
-#include <boost/units/systems/si/io.hpp>
+
+#include <boost/variant.hpp>
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_errno.h>
 
 #include "units.hpp"
-
-#define kilo 1e3
-#define mega 1e6
-#define giga 1e9
 
 using namespace std;
 using namespace boost::units;

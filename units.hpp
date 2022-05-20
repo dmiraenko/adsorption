@@ -1,4 +1,10 @@
 #include <boost/units/quantity.hpp>
+#include <boost/units/systems/si/io.hpp>
+
+#define kilo 1e3
+#define mega 1e6
+#define giga 1e9
+
 
 using namespace boost::units;
 

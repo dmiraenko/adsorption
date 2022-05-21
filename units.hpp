@@ -39,6 +39,17 @@ typedef unit<derived_dimension<amount_base_dimension, 1, mass_base_dimension, -1
 typedef quantity<conc_molpkg_unit, double> conc_molpkg;
 BOOST_UNITS_STATIC_CONSTANT(molpkg, conc_molpkg_unit);
 
-typedef quantity<unit<derived_dimension<amount_base_dimension, 1, length_base_dimension, -3>::type, si::system>, double> molpm3;
+typedef unit<derived_dimension<amount_base_dimension, -1, mass_base_dimension, 1>::type, si::system>::unit_type inv_conc_molpkg_unit;
+typedef quantity<inv_conc_molpkg_unit, double> inv_conc_molpkg;
+BOOST_UNITS_STATIC_CONSTANT(kgpmol, inv_conc_molpkg_unit);
+
+typedef unit<derived_dimension<amount_base_dimension, 1, length_base_dimension, -3>::type, si::system>::unit_type conc_molpm3_unit;
+typedef quantity<conc_molpm3_unit, double> conc_molpm3;
+BOOST_UNITS_STATIC_CONSTANT(molpm3, conc_molpm3_unit);
+
+typedef unit<derived_dimension<amount_base_dimension, -1, length_base_dimension, 3>::type, si::system>::unit_type inv_conc_molpm3_unit;
+typedef quantity<inv_conc_molpm3_unit, double> inv_conc_molpm3;
+BOOST_UNITS_STATIC_CONSTANT(m3pmol, inv_conc_molpm3_unit);
+
 
 // typedef make_scaled_unit<pressure, scale<10, static_rational<3> > >::type kilopascal;

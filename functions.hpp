@@ -12,11 +12,10 @@
 using namespace std;
 using namespace boost::units;
 
+
 template<class Conc>
 class AdsorptionFunction {
 public:
-    
-
     virtual Conc surface_concentration(const pressure& p){
         return 0;
     };
@@ -25,7 +24,7 @@ public:
         return 0;
     };
 
-    virtual Conc reduced_spreding_pressure(const pressure& p){
+    virtual Conc reduced_spreading_pressure(const pressure& p){
         return 0;
     };
 
@@ -33,6 +32,12 @@ public:
         return 0;
     };
 };
+
+template<class Conc>
+using AFunique_ptr = unique_ptr<AdsorptionFunction<Conc>>;
+
+template<class Conc>
+using AFvector = vector<AFunique_ptr<Conc>>;
 
 template<class Conc>
 class Langmuir : public AdsorptionFunction<Conc> {
@@ -90,7 +95,7 @@ public:
     }
 
     pressure pure_component_pressure(const Conc& z){
-        pcp_params params = {(double) t, (double) (z/cs)}
+        pcp_params params = {(double) t, (double) (z/cs)};
         return pure_component_pressure_diml(&params) / b;
     }
 
@@ -131,17 +136,19 @@ private:
         *dy = rsp_deriv_diml(x, &(p->t));
     }
 
-    static double pure_component_pressure_diml(const void* params){
+    static double pure_component_pressure_diml(void* params){
         const gsl_root_fdfsolver_type *T = gsl_root_fdfsolver_steffenson;
         gsl_root_fdfsolver *s = gsl_root_fdfsolver_alloc(T);
         gsl_function_fdf FDF;
+
+        // struct pcp_params *p = ;
 
         FDF.f = &f;
         FDF.df = &rsp_deriv_diml;
         FDF.fdf = &fdf;
         FDF.params = params;
 
-        double x0, x = exp(zcs) - 1;
+        double x0, x = exp(((struct pcp_params *) params) -> zcs) - 1;
         gsl_root_fdfsolver_set(s, &FDF, x);
 
         int status, iter = 0, max_iter = 100;
@@ -272,7 +279,7 @@ private:
         *dy = df(x, params);
     }
 
-    static double pure_component_pressure(const void* params){
+    static double pure_component_pressure_diml(void* params){
         const gsl_root_fdfsolver_type *T = gsl_root_fdfsolver_steffenson;
         gsl_root_fdfsolver *solv = gsl_root_fdfsolver_alloc(T);
         gsl_function_fdf FDF;
@@ -282,7 +289,7 @@ private:
         FDF.fdf = &fdf;
         FDF.params = params;
 
-        double x0, x = exp(z/cs) - 1;
+        double x0, x = exp(((struct pcp_params *) params) -> zcs) - 1;
         gsl_root_fdfsolver_set(solv, &FDF, x);
 
         int status, iter = 0, max_iter = 100;
